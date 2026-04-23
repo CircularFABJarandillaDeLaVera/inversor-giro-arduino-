@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inversor de Giro – 2 Relés + Arduino</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0f1628;
+    --border: #1e3a5f;
+    --green: #00ff88;
+    --cyan: #00cfff;
+    --red: #ff4455;
+    --yellow: #ffd700;
+    --orange: #ff8800;
+    --dim: #3a4a6a;
+    --wire-red: #ff3333;
+    --wire-blk: #222;
+    --wire-grn: #00cc55;
+    --wire-yel: #ffdd00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: #c8d8f0;
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--cyan);
+    text-align: center;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .subtitle { text-align: center; color: var(--dim); font-size: 0.7rem; margin-bottom: 16px; letter-spacing: 2px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .tab {
+    flex: 1; padding: 8px 4px; text-align: center;
+    border: 1px solid var(--border); border-radius: 4px;
+    cursor: pointer; font-family: 'Share Tech Mono'; font-size: 0.7rem;
+    color: var(--dim); background: var(--panel); transition: all .2s;
+    letter-spacing: 1px;
+  }
+  .tab.active { border-color: var(--cyan); color: var(--cyan); background: #0a1e35; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* DIAGRAM SVG */
+  .diagram-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    margin-bottom: 14px;
+  }
+  svg { display: block; margin: auto; }
+
+  /* COMPONENTS */
+  .comp-box { fill: #0d1f3c; stroke: #1e3a5f; stroke-width: 1.5; rx: 4; }
+  .arduino { fill: #00442a; stroke: #00ff88; stroke-width: 1.5; }
+  .relay { fill: #1a1030; stroke: #7744cc; stroke-width: 1.5; }
+  .motor { fill: #1a1a00; stroke: #ffd700; stroke-width: 1.5; }
+  .fuente { fill: #1a0000; stroke: #ff4455; stroke-width: 1.5; }
+  .switch-box { fill: #001a1a; stroke: #00cfff; stroke-width: 1.5; }
+
+  .label { font-family: 'Share Tech Mono'; fill: #c8d8f0; font-size: 9px; }
+  .label-title { font-family: 'Orbitron'; fill: #00cfff; font-size: 8px; font-weight: 700; }
+  .label-green { fill: #00ff88; }
+  .label-red { fill: #ff4455; }
+  .label-yellow { fill: #ffd700; }
+  .label-cyan { fill: #00cfff; }
+  .label-orange { fill: #ff8800; }
+
+  /* PIN DOTS */
+  circle.pin { r: 3; }
+
+  /* TRUTH TABLE */
+  .truth-table {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    font-size: 0.75rem;
+  }
+  .truth-table table { width: 100%; border-collapse: collapse; }
+  .truth-table th {
+    background: #0a1e35; color: var(--cyan);
+    padding: 8px; text-align: center; border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron'; font-size: 0.6rem; letter-spacing: 1px;
+  }
+  .truth-table td { padding: 7px 8px; text-align: center; border-bottom: 1px solid #0d1628; }
+  .truth-table tr:last-child td { border-bottom: none; }
+  .tt-on { color: var(--green); }
+  .tt-off { color: var(--dim); }
+  .tt-fwd { color: var(--cyan); }
+  .tt-bwd { color: var(--orange); }
+  .tt-stop { color: #888; }
+  .tt-danger { color: var(--red); }
+
+  /* CODE */
+  .code-block {
+    background: #060c18;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 0.68rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+    margin-bottom: 14px;
+    color: #aac8f0;
+  }
+  .kw { color: #cc88ff; }
+  .fn { color: #00cfff; }
+  .cmt { color: #3a6040; }
+  .str { color: #ffd700; }
+  .num { color: #ff8844; }
+  .def { color: #00ff88; }
+
+  /* NOTES */
+  .notes {
+    background: var(--panel);
+    border-left: 3px solid var(--yellow);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    font-size: 0.72rem;
+    line-height: 1.9;
+  }
+  .notes .note-title { color: var(--yellow); font-family: 'Orbitron'; font-size: 0.65rem; margin-bottom: 8px; letter-spacing: 2px; }
+  .notes li { margin-left: 14px; margin-bottom: 4px; }
+  .warn { color: var(--red); }
+  .ok { color: var(--green); }
+  .info { color: var(--cyan); }
+
+  /* SIMULATOR */
+  .sim-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .sim-title { font-family: 'Orbitron'; color: var(--cyan); font-size: 0.65rem; letter-spacing: 2px; margin-bottom: 12px; }
+  .sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .relay-indicator {
+    background: #060c18;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .relay-indicator .r-name { font-family: 'Orbitron'; font-size: 0.6rem; color: var(--dim); margin-bottom: 6px; }
+  .relay-indicator .r-led {
+    width: 20px; height: 20px; border-radius: 50%;
+    margin: 4px auto; background: #1a0830;
+    border: 2px solid #3a0860;
+    transition: all .3s;
+  }
+  .relay-indicator .r-led.on { background: #cc44ff; border-color: #cc44ff; box-shadow: 0 0 10px #cc44ff; }
+  .relay-indicator .r-state { font-size: 0.65rem; color: var(--dim); transition: color .3s; }
+  .relay-indicator .r-state.on { color: #cc44ff; }
+
+  .motor-display {
+    background: #060c18;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .motor-display .m-name { font-family: 'Orbitron'; font-size: 0.6rem; color: var(--dim); margin-bottom: 8px; }
+  .motor-icon {
+    width: 50px; height: 50px; margin: 0 auto 8px;
+    border-radius: 50%;
+    border: 3px solid var(--dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    transition: all .3s;
+    position: relative;
+  }
+  .motor-icon.fwd { border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan); animation: spinFwd .5s linear infinite; }
+  .motor-icon.bwd { border-color: var(--orange); box-shadow: 0 0 15px var(--orange); animation: spinBwd .5s linear infinite; }
+  .motor-icon.stop { border-color: var(--dim); }
+  @keyframes spinFwd { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spinBwd { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+  .motor-status { font-family: 'Orbitron'; font-size: 0.65rem; color: var(--dim); transition: color .3s; }
+  .motor-status.fwd { color: var(--cyan); }
+  .motor-status.bwd { color: var(--orange); }
+
+  .ctrl-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .ctrl-btn {
+    padding: 12px 4px; border: none; border-radius: 6px;
+    font-family: 'Orbitron'; font-size: 0.6rem; letter-spacing: 1px;
+    cursor: pointer; transition: all .15s; color: #000; font-weight: 700;
+  }
+  .btn-fwd { background: var(--cyan); }
+  .btn-fwd:active { background: #0099cc; transform: scale(.96); }
+  .btn-stop { background: #888; color: #fff; }
+  .btn-stop:active { background: #555; transform: scale(.96); }
+  .btn-bwd { background: var(--orange); }
+  .btn-bwd:active { background: #cc6600; transform: scale(.96); }
+
+  .pin-table {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.72rem;
+    margin-bottom: 14px;
+  }
+  .pin-table table { width: 100%; border-collapse: collapse; }
+  .pin-table th { background: #0a1e35; color: var(--green); padding: 8px; text-align: left; border-bottom: 1px solid var(--border); font-family: 'Orbitron'; font-size: 0.58rem; letter-spacing: 1px; }
+  .pin-table td { padding: 7px 10px; border-bottom: 1px solid #0d1628; }
+  .pin-table tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block; padding: 2px 7px; border-radius: 3px;
+    font-size: 0.6rem; font-weight: bold;
+  }
+  .badge-grn { background: #003320; color: var(--green); border: 1px solid var(--green); }
+  .badge-red { background: #300010; color: var(--red); border: 1px solid var(--red); }
+  .badge-yel { background: #302000; color: var(--yellow); border: 1px solid var(--yellow); }
+  .badge-cyn { background: #001a30; color: var(--cyan); border: 1px solid var(--cyan); }
+  .badge-pur { background: #1a0030; color: #cc88ff; border: 1px solid #cc88ff; }
+</style>
+</head>
+<body>
+
+<h1>Inversor de Giro</h1>
+<div class="subtitle">2 RELÉS · ARDUINO · ESQUEMA COMPLETO</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('esquema')">ESQUEMA</div>
+  <div class="tab" onclick="showTab('codigo')">CÓDIGO</div>
+  <div class="tab" onclick="showTab('sim')">SIMULADOR</div>
+  <div class="tab" onclick="showTab('notas')">NOTAS</div>
+</div>
+
+<!-- ═══════════════ ESQUEMA ═══════════════ -->
+<div class="section active" id="tab-esquema">
+
+  <div class="diagram-wrap">
+    <svg width="340" height="480" viewBox="0 0 340 480">
+      <!-- FONDO GRID -->
+      <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0d1628" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="340" height="480" fill="url(#grid)"/>
+
+      <!-- ── ARDUINO ── -->
+      <rect x="10" y="30" width="100" height="130" rx="5" class="arduino"/>
+      <text x="60" y="48" text-anchor="middle" class="label-title">ARDUINO</text>
+      <!-- Pines -->
+      <rect x="15" y="58" width="38" height="14" rx="2" fill="#004030" stroke="#00aa55" stroke-width="1"/>
+      <text x="34" y="68" text-anchor="middle" class="label label-green" font-size="7">D7 → K1</text>
+      <rect x="15" y="76" width="38" height="14" rx="2" fill="#004030" stroke="#00aa55" stroke-width="1"/>
+      <text x="34" y="86" text-anchor="middle" class="label label-green" font-size="7">D8 → K2</text>
+      <rect x="15" y="94" width="38" height="14" rx="2" fill="#003030" stroke="#0088aa" stroke-width="1"/>
+      <text x="34" y="104" text-anchor="middle" class="label label-cyan" font-size="7">D2 BTN▶</text>
+      <rect x="15" y="112" width="38" height="14" rx="2" fill="#003030" stroke="#0088aa" stroke-width="1"/>
+      <text x="34" y="122" text-anchor="middle" class="label label-cyan" font-size="7">D3 BTN◀</text>
+      <rect x="15" y="130" width="38" height="14" rx="2" fill="#1a1a00" stroke="#888800" stroke-width="1"/>
+      <text x="34" y="140" text-anchor="middle" class="label" font-size="7" fill="#bbbb00">D4 STOP</text>
+      <!-- GND y 5V -->
+      <rect x="58" y="58" width="46" height="14" rx="2" fill="#300010" stroke="#aa0030" stroke-width="1"/>
+      <text x="81" y="68" text-anchor="middle" class="label label-red" font-size="7">5V → VCC</text>
+      <rect x="58" y="76" width="46" height="14" rx="2" fill="#200010" stroke="#660020" stroke-width="1"/>
+      <text x="81" y="86" text-anchor="middle" class="label" font-size="7" fill="#cc4455">GND COM</text>
+      <text x="60" y="155" text-anchor="middle" class="label" font-size="7" fill="#006040">UNO / NANO / MEGA</text>
+
+      <!-- ── MÓDULO RELÉ ── -->
+      <rect x="140" y="30" width="110" height="130" rx="5" class="relay"/>
+      <text x="195" y="48" text-anchor="middle" class="label-title" fill="#cc88ff">MÓDULO RELÉ 2CH</text>
+      <!-- K1 -->
+      <rect x="148" y="56" width="45" height="46" rx="3" fill="#0d0820" stroke="#7744cc" stroke-width="1"/>
+      <text x="170" y="68" text-anchor="middle" class="label" fill="#cc88ff" font-size="8">K1</text>
+      <text x="170" y="78" text-anchor="middle" class="label" font-size="7">COM</text>
+      <text x="158" y="92" text-anchor="middle" class="label label-red" font-size="7">NO</text>
+      <text x="182" y="92" text-anchor="middle" class="label" font-size="7" fill="#888">NC</text>
+      <circle cx="158" cy="98" r="3" fill="#ff3333" class="pin"/>
+      <circle cx="182" cy="98" r="3" fill="#444" class="pin"/>
+      <circle cx="170" cy="98" r="3" fill="#888" class="pin"/>
+      <!-- K2 -->
+      <rect x="198" y="56" width="45" height="46" rx="3" fill="#0d0820" stroke="#7744cc" stroke-width="1"/>
+      <text x="220" y="68" text-anchor="middle" class="label" fill="#cc88ff" font-size="8">K2</text>
+      <text x="220" y="78" text-anchor="middle" class="label" font-size="7">COM</text>
+      <text x="208" y="92" text-anchor="middle" class="label label-red" font-size="7">NO</text>
+      <text x="232" y="92" text-anchor="middle" class="label" font-size="7" fill="#888">NC</text>
+      <circle cx="208" cy="98" r="3" fill="#ff3333" class="pin"/>
+      <circle cx="232" cy="98" r="3" fill="#444" class="pin"/>
+      <circle cx="220" cy="98" r="3" fill="#888" class="pin"/>
+      <!-- Pines control -->
+      <rect x="148" y="110" width="44" height="12" rx="2" fill="#1a0030" stroke="#5533aa" stroke-width="1"/>
+      <text x="170" y="119" text-anchor="middle" class="label" font-size="7" fill="#cc88ff">IN1 (D7)</text>
+      <rect x="196" y="110" width="44" height="12" rx="2" fill="#1a0030" stroke="#5533aa" stroke-width="1"/>
+      <text x="218" y="119" text-anchor="middle" class="label" font-size="7" fill="#cc88ff">IN2 (D8)</text>
+      <rect x="148" y="126" width="44" height="12" rx="2" fill="#300010" stroke="#aa0030" stroke-width="1"/>
+      <text x="170" y="135" text-anchor="middle" class="label label-red" font-size="7">VCC 5V</text>
+      <rect x="196" y="126" width="44" height="12" rx="2" fill="#200010" stroke="#660020" stroke-width="1"/>
+      <text x="218" y="135" text-anchor="middle" class="label" font-size="7" fill="#cc4455">GND</text>
+      <text x="195" y="155" text-anchor="middle" class="label" font-size="7" fill="#5533aa">ACTIVO BAJO (LOW=ON)</text>
+
+      <!-- ── MOTOR DC ── -->
+      <ellipse cx="280" cy="95" rx="42" ry="40" fill="#1a1a00" stroke="#ffd700" stroke-width="1.5"/>
+      <text x="280" y="82" text-anchor="middle" class="label-title" fill="#ffd700" font-size="9">MOTOR</text>
+      <text x="280" y="94" text-anchor="middle" class="label" fill="#ffd700" font-size="8">DC</text>
+      <text x="280" y="106" text-anchor="middle" class="label" fill="#ffd700" font-size="7">⚡ A</text>
+      <circle cx="258" cy="120" r="5" fill="#ff3333"/>
+      <text x="258" y="136" text-anchor="middle" class="label label-red" font-size="7">M+</text>
+      <circle cx="302" cy="120" r="5" fill="#111"/>
+      <text x="302" y="136" text-anchor="middle" class="label" font-size="7" fill="#888">M-</text>
+
+      <!-- ── FUENTE ── -->
+      <rect x="10" y="200" width="80" height="60" rx="5" class="fuente"/>
+      <text x="50" y="218" text-anchor="middle" class="label-title" fill="#ff4455">FUENTE</text>
+      <text x="50" y="232" text-anchor="middle" class="label" fill="#ff4455" font-size="9">12V DC</text>
+      <circle cx="30" cy="248" r="5" fill="#ff3333"/>
+      <text x="30" y="264" text-anchor="middle" class="label label-red" font-size="8">+12V</text>
+      <circle cx="70" cy="248" r="5" fill="#222"/>
+      <text x="70" y="264" text-anchor="middle" class="label" font-size="8" fill="#888">GND</text>
+
+      <!-- ── BOTONES ── -->
+      <rect x="10" y="290" width="100" height="100" rx="5" class="switch-box"/>
+      <text x="60" y="308" text-anchor="middle" class="label-title" fill="#00cfff" font-size="7">BOTONES</text>
+      <!-- BTN1 -->
+      <rect x="18" y="315" width="28" height="22" rx="3" fill="#002030" stroke="#00cfff" stroke-width="1"/>
+      <text x="32" y="325" text-anchor="middle" class="label label-cyan" font-size="7">▶</text>
+      <text x="32" y="333" text-anchor="middle" class="label" font-size="6" fill="#007799">D2</text>
+      <!-- BTN2 -->
+      <rect x="56" y="315" width="28" height="22" rx="3" fill="#201000" stroke="#ff8800" stroke-width="1"/>
+      <text x="70" y="325" text-anchor="middle" class="label label-orange" font-size="7">■</text>
+      <text x="70" y="333" text-anchor="middle" class="label" font-size="6" fill="#996600">D4</text>
+      <!-- BTN3 -->
+      <rect x="37" y="345" width="28" height="22" rx="3" fill="#002030" stroke="#00cfff" stroke-width="1"/>
+      <text x="51" y="355" text-anchor="middle" class="label label-cyan" font-size="7">◀</text>
+      <text x="51" y="363" text-anchor="middle" class="label" font-size="6" fill="#007799">D3</text>
+      <!-- GND botones -->
+      <text x="60" y="383" text-anchor="middle" class="label" font-size="6" fill="#446688">→ GND c/ 10kΩ pull-up</text>
+
+      <!-- ═══ CABLES ═══ -->
+      <!-- Arduino D7 → Relé IN1 (verde) -->
+      <path d="M53 65 H 140" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <!-- Arduino D8 → Relé IN2 (verde) -->
+      <path d="M53 83 H 140" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <!-- Arduino 5V → Relé VCC (rojo) -->
+      <path d="M104 65 L 130 65 L 130 132 L 148 132" fill="none" stroke="#ff3333" stroke-width="1.5"/>
+      <!-- Arduino GND → Relé GND (negro) -->
+      <path d="M104 83 L 135 83 L 135 138 L 196 138" fill="none" stroke="#444" stroke-width="1.5"/>
+
+      <!-- K1 NO → Motor M+ (rojo) -->
+      <path d="M158 98 L 158 145 L 258 145 L 258 120" fill="none" stroke="#ff3333" stroke-width="2"/>
+      <!-- K2 NO → Motor M- (negro) -->
+      <path d="M208 98 L 208 150 L 302 150 L 302 120" fill="none" stroke="#444" stroke-width="2"/>
+
+      <!-- Fuente +12V → K1 COM (rojo) -->
+      <path d="M30 248 L 30 190 L 170 190 L 170 102" fill="none" stroke="#ff3333" stroke-width="2"/>
+      <!-- Fuente GND → K2 COM (negro) -->
+      <path d="M70 248 L 70 195 L 220 195 L 220 102" fill="none" stroke="#333" stroke-width="2"/>
+
+      <!-- Botones → Arduino (cyan) -->
+      <path d="M32 315 L 32 295 L 5 295 L 5 108 L 15 108" fill="none" stroke="#00cfff" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <path d="M51 345 L 51 290 L 3 290 L 3 120 L 15 120" fill="none" stroke="#00cfff" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <path d="M70 315 L 70 285 L 2 285 L 2 132 L 15 132" fill="none" stroke="#ff8800" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+      <!-- ═══ ETIQUETAS DE CABLES ═══ -->
+      <rect x="75" y="57" width="58" height="11" rx="2" fill="#001810" opacity="0.9"/>
+      <text x="104" y="65" text-anchor="middle" class="label label-green" font-size="7">SEÑAL CTRL</text>
+      <rect x="200" y="140" width="55" height="11" rx="2" fill="#1a0000" opacity="0.9"/>
+      <text x="227" y="148" text-anchor="middle" class="label label-red" font-size="7">CARGA 12V</text>
+
+      <!-- ═══ NOTAS INLINE ═══ -->
+      <!-- Diodo flyback -->
+      <text x="175" y="175" class="label" font-size="7" fill="#ff8800">⚡ Diodo 1N4007 en paralelo con bobinas si relés sueltos</text>
+
+      <!-- GND común -->
+      <rect x="90" y="200" width="80" height="20" rx="3" fill="#0a0e1a" stroke="#446688" stroke-width="1" opacity="0.9"/>
+      <text x="130" y="214" text-anchor="middle" class="label" font-size="7" fill="#4488aa">GND COMÚN ★</text>
+
+      <!-- Flecha motor -->
+      <text x="280" y="58" text-anchor="middle" class="label" font-size="9" fill="#ffd700">⟳</text>
+    </svg>
+  </div>
+
+  <!-- PIN TABLE -->
+  <div class="pin-table">
+    <table>
+      <tr>
+        <th>ARDUINO</th><th>DESTINO</th><th>CABLE</th><th>FUNCIÓN</th>
+      </tr>
+      <tr>
+        <td><span class="badge badge-grn">D7</span></td>
+        <td>Relé IN1</td>
+        <td>🟢 Verde</td>
+        <td>Controla K1 (adelante)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-grn">D8</span></td>
+        <td>Relé IN2</td>
+        <td>🟢 Verde</td>
+        <td>Controla K2 (atrás)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">5V</span></td>
+        <td>Relé VCC</td>
+        <td>🔴 Rojo</td>
+        <td>Alimenta bobinas</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-pur">GND</span></td>
+        <td>Relé GND + Fuente GND</td>
+        <td>⚫ Negro</td>
+        <td>GND común ★ crítico</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-cyn">D2</span></td>
+        <td>Botón adelante</td>
+        <td>🔵 Azul</td>
+        <td>INPUT_PULLUP</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-cyn">D3</span></td>
+        <td>Botón atrás</td>
+        <td>🔵 Azul</td>
+        <td>INPUT_PULLUP</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-yel">D4</span></td>
+        <td>Botón stop</td>
+        <td>🟡 Amarillo</td>
+        <td>INPUT_PULLUP</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- TRUTH TABLE -->
+  <div class="truth-table">
+    <table>
+      <tr>
+        <th>K1 (D7)</th><th>K2 (D8)</th><th>MOTOR</th>
+      </tr>
+      <tr>
+        <td class="tt-off">OFF</td><td class="tt-off">OFF</td>
+        <td class="tt-stop">⏹ DETENIDO</td>
+      </tr>
+      <tr>
+        <td class="tt-on">ON</td><td class="tt-off">OFF</td>
+        <td class="tt-fwd">▶ ADELANTE</td>
+      </tr>
+      <tr>
+        <td class="tt-off">OFF</td><td class="tt-on">ON</td>
+        <td class="tt-bwd">◀ ATRÁS</td>
+      </tr>
+      <tr>
+        <td class="tt-danger">ON ⚠</td><td class="tt-danger">ON ⚠</td>
+        <td class="tt-danger">🔥 CORTOCIRCUITO</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ CÓDIGO ═══════════════ -->
+<div class="section" id="tab-codigo">
+  <div class="code-block"><span class="cmt">// ════════════════════════════════════════
+// INVERSOR DE GIRO - 2 RELÉS + ARDUINO
+// Módulo relé activo bajo (LOW = activado)
+// ════════════════════════════════════════</span>
+
+<span class="def">#define</span> RELE1    <span class="num">7</span>    <span class="cmt">// K1 → giro adelante</span>
+<span class="def">#define</span> RELE2    <span class="num">8</span>    <span class="cmt">// K2 → giro atrás</span>
+<span class="def">#define</span> BTN_FWD  <span class="num">2</span>    <span class="cmt">// Botón adelante (INPUT_PULLUP)</span>
+<span class="def">#define</span> BTN_BWD  <span class="num">3</span>    <span class="cmt">// Botón atrás</span>
+<span class="def">#define</span> BTN_STP  <span class="num">4</span>    <span class="cmt">// Botón stop</span>
+
+<span class="kw">void</span> <span class="fn">setup</span>() {
+  <span class="fn">pinMode</span>(RELE1, OUTPUT);
+  <span class="fn">pinMode</span>(RELE2, OUTPUT);
+  <span class="fn">pinMode</span>(BTN_FWD, INPUT_PULLUP);
+  <span class="fn">pinMode</span>(BTN_BWD, INPUT_PULLUP);
+  <span class="fn">pinMode</span>(BTN_STP, INPUT_PULLUP);
+
+  <span class="cmt">// Estado seguro al arrancar</span>
+  <span class="fn">motorStop</span>();
+  Serial.<span class="fn">begin</span>(<span class="num">9600</span>);
+}
+
+<span class="cmt">// ─── Funciones de control ───</span>
+<span class="kw">void</span> <span class="fn">motorFwd</span>() {
+  <span class="fn">digitalWrite</span>(RELE2, HIGH);  <span class="cmt">// Apagar K2 primero</span>
+  <span class="fn">delay</span>(<span class="num">10</span>);                  <span class="cmt">// Tiempo muerto anti-cortocircuito</span>
+  <span class="fn">digitalWrite</span>(RELE1, LOW);   <span class="cmt">// Activar K1 (activo bajo)</span>
+  Serial.<span class="fn">println</span>(<span class="str">"▶ ADELANTE"</span>);
+}
+
+<span class="kw">void</span> <span class="fn">motorBwd</span>() {
+  <span class="fn">digitalWrite</span>(RELE1, HIGH);  <span class="cmt">// Apagar K1 primero</span>
+  <span class="fn">delay</span>(<span class="num">10</span>);
+  <span class="fn">digitalWrite</span>(RELE2, LOW);   <span class="cmt">// Activar K2</span>
+  Serial.<span class="fn">println</span>(<span class="str">"◀ ATRÁS"</span>);
+}
+
+<span class="kw">void</span> <span class="fn">motorStop</span>() {
+  <span class="fn">digitalWrite</span>(RELE1, HIGH);
+  <span class="fn">digitalWrite</span>(RELE2, HIGH);
+  Serial.<span class="fn">println</span>(<span class="str">"■ STOP"</span>);
+}
+
+<span class="cmt">// ─── Loop principal ───</span>
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">if</span> (<span class="fn">digitalRead</span>(BTN_FWD) == LOW) {
+    <span class="fn">motorFwd</span>();
+    <span class="fn">delay</span>(<span class="num">250</span>);  <span class="cmt">// Anti-rebote</span>
+  }
+  <span class="kw">if</span> (<span class="fn">digitalRead</span>(BTN_BWD) == LOW) {
+    <span class="fn">motorBwd</span>();
+    <span class="fn">delay</span>(<span class="num">250</span>);
+  }
+  <span class="kw">if</span> (<span class="fn">digitalRead</span>(BTN_STP) == LOW) {
+    <span class="fn">motorStop</span>();
+    <span class="fn">delay</span>(<span class="num">250</span>);
+  }
+
+  <span class="cmt">// Control por Serial Monitor (opcional)</span>
+  <span class="kw">if</span> (Serial.<span class="fn">available</span>()) {
+    <span class="kw">char</span> cmd = Serial.<span class="fn">read</span>();
+    <span class="kw">if</span> (cmd == <span class="str">'f'</span>) <span class="fn">motorFwd</span>();
+    <span class="kw">if</span> (cmd == <span class="str">'b'</span>) <span class="fn">motorBwd</span>();
+    <span class="kw">if</span> (cmd == <span class="str">'s'</span>) <span class="fn">motorStop</span>();
+  }
+}</div>
+</div>
+
+<!-- ═══════════════ SIMULADOR ═══════════════ -->
+<div class="section" id="tab-sim">
+  <div class="sim-panel">
+    <div class="sim-title">▸ SIMULADOR DE ESTADOS</div>
+    <div class="sim-grid">
+      <div class="relay-indicator">
+        <div class="r-name">RELÉ K1</div>
+        <div class="r-led" id="led1"></div>
+        <div class="r-state" id="state1">APAGADO</div>
+        <div style="font-size:0.6rem; color:#446688; margin-top:4px;">D7 · Adelante</div>
+      </div>
+      <div class="relay-indicator">
+        <div class="r-name">RELÉ K2</div>
+        <div class="r-led" id="led2"></div>
+        <div class="r-state" id="state2">APAGADO</div>
+        <div style="font-size:0.6rem; color:#446688; margin-top:4px;">D8 · Atrás</div>
+      </div>
+    </div>
+    <div class="motor-display">
+      <div class="m-name">MOTOR DC</div>
+      <div class="motor-icon stop" id="motorIcon">⚙</div>
+      <div class="motor-status stop" id="motorStatus">DETENIDO</div>
+    </div>
+    <div class="ctrl-btns">
+      <button class="ctrl-btn btn-fwd" onclick="simFwd()">▶ FWD</button>
+      <button class="ctrl-btn btn-stop" onclick="simStop()">■ STOP</button>
+      <button class="ctrl-btn btn-bwd" onclick="simBwd()">◀ BWD</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ NOTAS ═══════════════ -->
+<div class="section" id="tab-notas">
+  <div class="notes">
+    <div class="note-title">⚠ CONSIDERACIONES CLAVE</div>
+    <ul>
+      <li class="warn">⛔ NUNCA actives K1 y K2 a la vez — cortocircuito en la fuente</li>
+      <li class="ok">✅ El código siempre apaga un relé antes de activar el otro (delay 10ms)</li>
+      <li class="ok">✅ GND común obligatorio entre Arduino y fuente del motor</li>
+      <li class="info">ℹ Módulo relé activo bajo: LOW activa, HIGH desactiva</li>
+      <li class="info">ℹ Si usas relés sueltos: añade diodo 1N4007 en antiparalelo en cada bobina</li>
+      <li class="warn">⚡ Los relés deben aguantar la corriente del motor (5A, 10A, según modelo)</li>
+      <li class="ok">✅ Los botones usan INPUT_PULLUP interno del Arduino — no necesitan resistencias externas</li>
+      <li class="info">ℹ Puedes controlar por Serial Monitor: 'f' = adelante, 'b' = atrás, 's' = stop</li>
+    </ul>
+    <br>
+    <div class="note-title" style="color: var(--cyan)">📦 COMPONENTES NECESARIOS</div>
+    <ul>
+      <li>Arduino Uno / Nano / Mega</li>
+      <li>Módulo relé de 2 canales (5V)</li>
+      <li>Motor DC (cualquier voltaje 6–24V)</li>
+      <li>Fuente DC para el motor</li>
+      <li>3× pulsadores normalmente abiertos</li>
+      <li>Cable dupont macho-hembra</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  function showTab(id) {
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      const ids = ['esquema','codigo','sim','notas'];
+      t.classList.toggle('active', ids[i] === id);
+    });
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+  }
+
+  function setRelays(k1, k2) {
+    const led1 = document.getElementById('led1');
+    const led2 = document.getElementById('led2');
+    const st1  = document.getElementById('state1');
+    const st2  = document.getElementById('state2');
+    led1.classList.toggle('on', k1);
+    led2.classList.toggle('on', k2);
+    st1.textContent = k1 ? 'ACTIVADO' : 'APAGADO';
+    st2.textContent = k2 ? 'ACTIVADO' : 'APAGADO';
+    st1.classList.toggle('on', k1);
+    st2.classList.toggle('on', k2);
+  }
+
+  function setMotor(state) {
+    const icon   = document.getElementById('motorIcon');
+    const status = document.getElementById('motorStatus');
+    icon.className   = 'motor-icon ' + state;
+    status.className = 'motor-status ' + state;
+    const labels = { fwd: '▶ ADELANTE', bwd: '◀ ATRÁS', stop: '⏹ DETENIDO' };
+    status.textContent = labels[state];
+  }
+
+  function simFwd()  { setRelays(true, false);  setMotor('fwd'); }
+  function simBwd()  { setRelays(false, true);   setMotor('bwd'); }
+  function simStop() { setRelays(false, false);  setMotor('stop'); }
+</script>
+</body>
+</html>
